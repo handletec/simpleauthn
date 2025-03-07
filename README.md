@@ -111,8 +111,12 @@ if nil != err {
     os.Exit(1)
 }
 
+token := new(Token)
+token.Claim = simpleauthn.NewClaim(time.Duration(time.Second * 120)) // fill claims with default values, setting the expiry to be 2 minutes from now
+token.Issuer = "superduperman-es256"
+
 // the second optional parameter field uses the same parameters as shown above
-requestStr, err := simpleauthn.NewRequest(keyPrivate, nil)
+requestStr, err := simpleauthn.NewRequest(keyPrivate, token)
 if nil != err {
     log.Println(err)
     os.Exit(1)
@@ -138,14 +142,17 @@ if nil != err {
     os.Exit(1)
 }
 
-request, err := host.Verify(requestStr)
+// assume the `tokenStr` is obtained from a HTTP input
+
+tokenVerify := new(Claim)
+err = host.Verify(tokenStr, tokenVerify) // save the payload into our struct so we can use it for futher validation
 if nil != err {
     log.Println(err)
     os.Exit(1)
 }
 
 // if there is no error, the request string was verified successfully, use the request struct values as needed within the application
-fmt.Println(request)
+fmt.Println(tokenVerify)
 ```
 
 
