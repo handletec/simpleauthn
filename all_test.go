@@ -1,6 +1,7 @@
 package simpleauthn_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,16 @@ import (
 	"github.com/handletec/simpleauthn"
 	"github.com/svicknesh/key/v2"
 )
+
+type Claim struct {
+	*simpleauthn.Claim        // import default claims
+	Role               string `json:"role"`
+}
+
+func (r *Claim) String() (str string) {
+	bytes, _ := json.Marshal(r)
+	return string(bytes)
+}
 
 func TestAuth(t *testing.T) {
 
@@ -25,27 +36,26 @@ func TestAuth(t *testing.T) {
 		os.Exit(1)
 	}
 
-	//requestStr, err := simpleauthn.NewRequest(keyInput, &simpleauthn.Optional{NotBefore: time.Now().UTC().Unix() + 100})
-	requestStr, err := simpleauthn.NewRequest(keyInput, &simpleauthn.Optional{
-		NotBefore: time.Now().UTC().Unix(),
-		Expiry:    time.Now().UTC().Unix() + 100,
-		Issuer:    "301:11.8888/USER/ABCD",
-		Payload:   "anything i want",
-	})
-	//requestStr, err := simpleauthn.NewRequest(keyInput, nil)
+	r := new(Claim)
+	r.Claim = simpleauthn.NewClaim(time.Duration(time.Second * 120)) // fill claims with default values
+	r.Role = "superduperman-hs256"
+	//fmt.Println(r)
+
+	requestStr, err := simpleauthn.NewRequest(keyInput, r)
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
 	}
 	fmt.Println(requestStr)
 
-	request, err := host.Verify(requestStr)
+	r2 := new(Claim)
+	err = host.Verify(requestStr, r2)
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
 	}
 
-	fmt.Println(request)
+	fmt.Println(r2)
 
 }
 
@@ -99,21 +109,27 @@ func TestKeys(t *testing.T) {
 		os.Exit(1)
 	}
 
+	r := new(Claim)
+	r.Claim = simpleauthn.NewClaim(time.Duration(time.Second * 120)) // fill claims with default values
+	r.Role = "superduperman-ed25519"
+	//fmt.Println(r)
+
 	// create a new signer using the private key for Ed25519
-	//requestStr, err := simpleauthn.NewRequest(key, &simpleauthn.Optional{NotBefore: time.Now().UTC().Unix() + 100})
-	requestStr, err := simpleauthn.NewRequest(keyPrivate, nil)
+	requestStr, err := simpleauthn.NewRequest(keyPrivate, r)
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
 	}
 	fmt.Println(requestStr)
 
-	request, err := host.Verify(requestStr)
+	r2 := new(Claim)
+	err = host.Verify(requestStr, r2)
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
 	}
 
-	fmt.Println(request)
+	fmt.Println(r2)
+	fmt.Println(r2.Role)
 
 }

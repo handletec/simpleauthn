@@ -52,6 +52,7 @@ func NewKey(alg Algorithm, inputKey string) (k *Key, err error) {
 		input = h[:]
 		k.isPrivate = true // for symetric keys, it is the same key for signing and verifying
 		k.isPublic = true  // for symetric keys, it is the same key for signing and verifying
+
 	default:
 		return nil, fmt.Errorf("newkey: unsupported algorithm given")
 	}

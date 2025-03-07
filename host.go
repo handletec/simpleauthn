@@ -1,8 +1,10 @@
 package simpleauthn
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v3/jws"
@@ -35,39 +37,41 @@ func NewHost(k *Key, validity int64) (host *Host, err error) {
 }
 
 // Verify - verifies the given request string
-func (host *Host) Verify(requestStr string) (authRequest *AuthnRequest, err error) {
+func (host *Host) Verify(requestStr string, output any) (err error) {
 
-	buf, err := jws.Verify([]byte(requestStr), jws.WithKey(host.key.alg, host.key.k))
+	bytes, err := jws.Verify([]byte(requestStr), jws.WithKey(host.key.alg, host.key.k))
 	if nil != err {
-		return nil, fmt.Errorf("verify: request -> %w", err)
+		return fmt.Errorf("verify: request -> %w", err)
 	}
 
-	authRequest = new(AuthnRequest)
-	err = json.Unmarshal(buf, authRequest)
+	claim := new(Claim)
+	err = json.Unmarshal(bytes, claim)
 	if nil != err {
-		return nil, fmt.Errorf("verify: unmarshal -> %w", err)
+		return fmt.Errorf("verify: unmarshal -> %w", err)
 	}
 
-	if authRequest.IssuedAt == 0 {
-		return nil, fmt.Errorf("verify: missing issued at")
+	if claim.IssuedAt == 0 {
+		return fmt.Errorf("verify: missing issued at")
 	}
 
 	now := time.Now().UTC()
 	nowUnix := now.Unix()
 
-	diff := authRequest.IssuedAt - nowUnix + host.validity
+	diff := claim.IssuedAt - nowUnix + host.validity
 	if !(diff >= 0 && diff <= host.validity) {
-		return nil, fmt.Errorf("verify: authorization exceeds validity period")
+		return fmt.Errorf("verify: authorization exceeds validity period")
 	}
 
 	// check optional fields
-
 	// if the not before value is set, the value must not exceed current time
-	if authRequest.NotBefore != 0 && authRequest.NotBefore > nowUnix {
-		return nil, fmt.Errorf("verify: authorization request (nbf) is in the future")
+	if claim.NotBefore != 0 && claim.NotBefore > nowUnix {
+		return fmt.Errorf("verify: authorization request (nbf) is in the future")
 	}
 
 	// other optional fields such as issuer and payload will be dealt with the caller as they see fit
 
-	return
+	// we split the JWS into its constituent parts and return the base64 decoded middle part, split[1]
+	split := strings.Split(requestStr, ".")
+	payloadBytes, _ := base64.RawURLEncoding.DecodeString(split[1])
+	return json.Unmarshal(payloadBytes, output)
 }
