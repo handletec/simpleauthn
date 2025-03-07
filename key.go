@@ -3,8 +3,8 @@ package simpleauthn
 import (
 	"fmt"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 	"github.com/svicknesh/key/v2"
 	"golang.org/x/crypto/blake2b"
 )
@@ -29,7 +29,7 @@ func NewKey(alg Algorithm, inputKey string) (k *Key, err error) {
 	inputBytes := []byte(inputKey)
 
 	switch alg {
-	case AlgES256, AlgES384, AlgES512:
+	case ED25519, ES256, ES384, ES512:
 		// public/private key usage
 		j, err := key.NewKeyFromBytes(inputBytes)
 		if nil != err {
@@ -43,10 +43,10 @@ func NewKey(alg Algorithm, inputKey string) (k *Key, err error) {
 			input = j.PublicKeyInstance()
 			k.isPublic = true
 		} else {
-			return nil, fmt.Errorf("newkey: no ECDSA public or private key instance found")
+			return nil, fmt.Errorf("newkey: no ED25519 or ECDSA public or private key instance found")
 		}
 
-	case AlgHS256, AlgHS384, AlgHS512:
+	case HS256, HS384, HS512:
 		// shared symetric key
 		h := blake2b.Sum256(inputBytes) // we convert the input key to a hash value, allows us to use phrases as well
 		input = h[:]
@@ -56,7 +56,7 @@ func NewKey(alg Algorithm, inputKey string) (k *Key, err error) {
 		return nil, fmt.Errorf("newkey: unsupported algorithm given")
 	}
 
-	k.k, err = jwk.FromRaw(input)
+	k.k, err = jwk.Import(input)
 	if nil != err {
 		return nil, fmt.Errorf("newkey: %w", err)
 	}

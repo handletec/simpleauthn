@@ -13,7 +13,7 @@ import (
 
 func TestAuth(t *testing.T) {
 
-	keyInput, err := simpleauthn.NewKey(simpleauthn.AlgHS256, "super-secret-key") // create a key using symetric keys (shared secret)
+	keyInput, err := simpleauthn.NewKey(simpleauthn.HS256, "super-secret-key") // create a key using symetric keys (shared secret)
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
@@ -51,36 +51,42 @@ func TestAuth(t *testing.T) {
 
 func TestKeys(t *testing.T) {
 
-	k, err := key.GenerateKey(key.ECDSA256)
+	// generate an Ed25519 key for testing
+	k, err := key.GenerateKey(key.ED25519)
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
 	}
 
-	keyPrivate, err := simpleauthn.NewKey(simpleauthn.AlgES256, k.String())
+	// create instance of ED25519 from private key for `simpleauthn`
+	keyPrivate, err := simpleauthn.NewKey(simpleauthn.ED25519, k.String())
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
 	}
 
+	// get the public key for ED25519 from the private key
 	pubKey, err := k.PublicKey()
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
 	}
 
-	keyPublic, err := simpleauthn.NewKey(simpleauthn.AlgES256, pubKey.String())
+	// create instance of ED25519 from public key for `simpleauthn`
+	keyPublic, err := simpleauthn.NewKey(simpleauthn.ED25519, pubKey.String())
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
 	}
 
+	// create a new verifier using the public key for Ed25519
 	host, err := simpleauthn.NewHost(keyPublic, 30)
 	if nil != err {
 		log.Println(err)
 		os.Exit(1)
 	}
 
+	// create a new signer using the private key for Ed25519
 	//requestStr, err := simpleauthn.NewRequest(key, &simpleauthn.Optional{NotBefore: time.Now().UTC().Unix() + 100})
 	requestStr, err := simpleauthn.NewRequest(keyPrivate, nil)
 	if nil != err {
