@@ -151,11 +151,7 @@ There may come a time when we may not know what public/private key is given, in 
 
 ```go
 // `inputKey` is a string obtainer from another source
-alg, err := simpleauthn.AlgForKey(inputKey)
-if nil != err {
-    log.Println(err)
-    os.Exit(1)
-}
+alg := simpleauthn.AlgForKey(inputKey)
 fmt.Println(alg)
 
 ```

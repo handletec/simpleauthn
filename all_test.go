@@ -57,11 +57,7 @@ func TestAlgForKey(t *testing.T) {
 		os.Exit(1)
 	}
 
-	alg, err := simpleauthn.AlgForKey(k.String())
-	if nil != err {
-		log.Println(err)
-		os.Exit(1)
-	}
+	alg := simpleauthn.AlgForKey(k.String())
 	fmt.Println(alg)
 
 }

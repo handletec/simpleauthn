@@ -57,26 +57,26 @@ func (ta Algorithm) String() (str string) {
 }
 
 // AlgForKey - returns recommended algorithm for given key, useful when we don't know what key we are getting
-func AlgForKey(inputKey string) (alg Algorithm, err error) {
+func AlgForKey(inputKey string) (alg Algorithm) {
 
 	// lets try to parse it as a public/private key
 	j, err := key.NewKeyFromBytes([]byte(inputKey))
 	if nil != err {
 		// if its not a public/private key, or an error is encountered, treat it as a symetric key
-		return HS256, nil // default use HMAC with SHA-256, still good enough
+		return HS256 // default use HMAC with SHA-256, still good enough
 	}
 
 	switch j.KeyType() {
 	case shared.ED25519:
-		return ED25519, nil
+		return ED25519
 	case shared.ECDSA256:
-		return ES256, nil
+		return ES256
 	case shared.ECDSA384:
-		return ES384, nil
+		return ES384
 	case shared.ECDSA521:
-		return ES512, nil
+		return ES512
 	}
 
 	// if its not a public/private key, or an error is encountered, treat it as a symetric key
-	return HS256, nil // default use HMAC with SHA-256, still good enough
+	return HS256 // default use HMAC with SHA-256, still good enough
 }
