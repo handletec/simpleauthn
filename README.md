@@ -1,6 +1,9 @@
 # Golang simple authentication library
 
-Golang library to create a simple JWS authentication scheme. Allows creation of JWS signatures and verifying them using either ECDSA public/private keys or symetric keys.
+Golang library to create a simple JWS authentication scheme. Allows creation of JWS signatures and verifying them using either ED25519/ECDSA public/private keys or symetric keys.
+
+This library performs the creation & verification of JWS to be used directly in applications. This library also supports both symetric and asymetric JWS, whereas (https://github.com/svicknesh/signature)[https://github.com/svicknesh/signature] only supports symetric keys.
+
 
 # Supported Algorithms
 This library supports the following algorithms
@@ -15,24 +18,36 @@ This library supports the following algorithms
 | `HS384` | symetric key | HMAC with SHA-384 |
 | `HS512` | symetric key | HMAC with SHA-512 |
 
+
 # Creating JWS signature
 
 This is done by the client side to create a request with required parameters for making sure the request is valid. The **absolute** minimum field needed is the issued at (`iat`) field that is used by the receiving end to ensure the request is valid. Other optional fields can be set which can be used by the caller to perform additional tasks based on the values. 
 
 ```golang
+
+// structure containing any content we want, makes the library more flexible
+type Token struct {
+    *simpleauthn.Claim // import default claims, containing `iat`, `nbf` and `exp`
+	Issuer string `json:"iss"`
+}
+
+token := new(Token)
+token.Claim = simpleauthn.NewClaim(time.Duration(time.Second * 120)) // fill claims with default values, setting the expiry to be 2 minutes from now
+token.Issuer = "superduperman-hs256"
+
+// use a symetric key for signing
 keyInput, err := simpleauthn.NewKey(simpleauthn.AlgHS256, "super-secret-key") // create a key using symetric keys (shared secret)
 if nil != err {
     log.Println(err)
     os.Exit(1)
 }
 
-//requestStr, err := simpleauthn.NewRequest(key, &simpleauthn.Optional{NotBefore: time.Now().UTC().Unix() + 100})
-requestStr, err := simpleauthn.NewRequest(keyInput, nil)
+authStr, err := simpleauthn.NewRequest(keyInput, token)
 if nil != err {
     log.Println(err)
     os.Exit(1)
 }
-fmt.Println(requestStr)
+fmt.Println(authStr)
 ```
 
 The JSON structure for the fields in the request are
@@ -41,25 +56,9 @@ The JSON structure for the fields in the request are
     "iat": unix timestamp when the request was created,
     "nbf": unix timestamp when the request is considered valid (optional),
     "exp": unix timestamp when the request will be invalid (optional),
-    "iss": "issuer of this token, can be a valid string",
-    "payload": "can be anything that is needed by the application"
+    "iss": "issuer of this token, can be a valid string"
 }
 ```
-
-## Optional parameters
-
-To pass additional values to the request, use the following approach
-
-```golang
-requestStr, err := simpleauthn.NewRequest(keyInput, &simpleauthn.Optional{
-    NotBefore: time.Now().UTC().Unix(),
-    Expiry:    time.Now().UTC().Unix() + 100,
-    Issuer:    "301:11.8888/USER/ABCD",
-    Payload:   "anything i want",
-})
-```
-
-The above are considered optional fields and will not be used by this library with the exception of the `NotBefore` field. If set, the library ensures the time given in `NotBefore` is not in the future. If it is, this library will return an error.
 
 
 # Verifying JWS signature
@@ -80,15 +79,19 @@ if nil != err {
     os.Exit(1)
 }
 
-request, err := host.Verify(requestStr)
+// assume the `tokenStr` is obtained from a HTTP input
+
+tokenVerify := new(Claim)
+err = host.Verify(tokenStr, tokenVerify) // save the payload into our struct so we can use it for futher validation
 if nil != err {
     log.Println(err)
     os.Exit(1)
 }
 
 // if there is no error, the request string was verified successfully, use the request struct values as needed within the application
-fmt.Println(request)
+fmt.Println(tokenVerify)
 ```
+
 
 # Using ECDSA public/private key
 
@@ -98,10 +101,11 @@ The client side uses the private key to sign the request and host uses the publi
 
 The public and private keys must be passed to the function in JWK string format, after which the function will parse the values to obtain the keys.
 
+
 ## Creating JWS signature using ECDSA private key
 
 ```golang
-keyPrivate, err := simpleauthn.NewKey(simpleauthn.ED25519, privateKeyJWKString)
+keyPrivate, err := simpleauthn.NewKey(simpleauthn.ES256, privateKeyJWKString)
 if nil != err {
     log.Println(err)
     os.Exit(1)
@@ -117,10 +121,11 @@ fmt.Println(requestStr)
 
 ```
 
+
 ## Verifying JWS signature using ECDSA public key
 
 ```golang
-keyPublic, err := simpleauthn.NewKey(simpleauthn.ED25519, publicKeyJWKString)
+keyPublic, err := simpleauthn.NewKey(simpleauthn.ES256, publicKeyJWKString)
 if nil != err {
     log.Println(err)
     os.Exit(1)
@@ -143,6 +148,12 @@ if nil != err {
 fmt.Println(request)
 ```
 
+
+# Using ED25519 public/private key
+
+To sign and verify the token using `ED25519`, replace all occurences of `simpleauth.ES256` with `simpleauthn.ED25519`. Both of these assume the JWK key already exists and is of the expected type.
+
+
 # Determining algorithm from `public/private` key
 
 There may come a time when we may not know what public/private key is given, in that case we can use the following approach to determine the algorithm. For symetric keys, the default algorithm selected is `HS256`.
@@ -153,5 +164,4 @@ There may come a time when we may not know what public/private key is given, in 
 // `inputKey` is a string obtainer from another source
 alg := simpleauthn.AlgForKey(inputKey)
 fmt.Println(alg)
-
 ```
