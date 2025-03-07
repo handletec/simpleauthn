@@ -65,3 +65,13 @@ func NewKey(alg Algorithm, inputKey string) (k *Key, err error) {
 
 	return
 }
+
+// IsPrivate - returns true if the key is private
+func (k *Key) IsPrivate() (ok bool) {
+	return k.isPrivate
+}
+
+// IsPublic - returns true if the key is public
+func (k *Key) IsPublic() (ok bool) {
+	return k.isPrivate
+}

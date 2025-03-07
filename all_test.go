@@ -49,6 +49,23 @@ func TestAuth(t *testing.T) {
 
 }
 
+func TestAlgForKey(t *testing.T) {
+
+	k, err := key.GenerateKey(key.ED25519)
+	if nil != err {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	alg, err := simpleauthn.AlgForKey(k.String())
+	if nil != err {
+		log.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println(alg)
+
+}
+
 func TestKeys(t *testing.T) {
 
 	// generate an Ed25519 key for testing

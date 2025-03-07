@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/svicknesh/key/v2"
+	"github.com/svicknesh/key/v2/shared"
 )
 
 type Algorithm uint8
@@ -52,4 +54,29 @@ func (ta Algorithm) String() (str string) {
 	}
 
 	return taStr[taInt]
+}
+
+// AlgForKey - returns recommended algorithm for given key, useful when we don't know what key we are getting
+func AlgForKey(inputKey string) (alg Algorithm, err error) {
+
+	// lets try to parse it as a public/private key
+	j, err := key.NewKeyFromBytes([]byte(inputKey))
+	if nil != err {
+		// if its not a public/private key, or an error is encountered, treat it as a symetric key
+		return HS256, nil // default use HMAC with SHA-256, still good enough
+	}
+
+	switch j.KeyType() {
+	case shared.ED25519:
+		return ED25519, nil
+	case shared.ECDSA256:
+		return ES256, nil
+	case shared.ECDSA384:
+		return ES384, nil
+	case shared.ECDSA521:
+		return ES512, nil
+	}
+
+	// if its not a public/private key, or an error is encountered, treat it as a symetric key
+	return HS256, nil // default use HMAC with SHA-256, still good enough
 }

@@ -142,3 +142,20 @@ if nil != err {
 // if there is no error, the request string was verified successfully, use the request struct values as needed within the application
 fmt.Println(request)
 ```
+
+# Determining algorithm from `public/private` key
+
+There may come a time when we may not know what public/private key is given, in that case we can use the following approach to determine the algorithm. For symetric keys, the default algorithm selected is `HS256`.
+
+**NOTE**: Ideally, the key type is known so we can specify the explicit algorithm during initalization.
+
+```go
+// `inputKey` is a string obtainer from another source
+alg, err := simpleauthn.AlgForKey(inputKey)
+if nil != err {
+    log.Println(err)
+    os.Exit(1)
+}
+fmt.Println(alg)
+
+```
