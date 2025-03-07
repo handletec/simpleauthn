@@ -2,6 +2,19 @@
 
 Golang library to create a simple JWS authentication scheme. Allows creation of JWS signatures and verifying them using either ECDSA public/private keys or symetric keys.
 
+# Supported Algorithms
+This library supports the following algorithms
+
+| Algorithm | Type | Description |
+| :--: | :--: | :-- |
+| `ED25519` | public/private key | uses twisted Edwards curves for signature generation. |
+| `ES256` | public/private key | ECDSA with SHA-256 |
+| `ES384` | public/private key | ECDSA with SHA-384 |
+| `ES512` | public/private key | ECDSA with SHA-512 |
+| `HS256` | symetric key | HMAC with SHA-256 |
+| `HS384` | symetric key | HMAC with SHA-384 |
+| `HS512` | symetric key | HMAC with SHA-512 |
+
 # Creating JWS signature
 
 This is done by the client side to create a request with required parameters for making sure the request is valid. The **absolute** minimum field needed is the issued at (`iat`) field that is used by the receiving end to ensure the request is valid. Other optional fields can be set which can be used by the caller to perform additional tasks based on the values. 
@@ -54,7 +67,7 @@ The above are considered optional fields and will not be used by this library wi
 This is done by the host side to verify the signature and making sure the request is within the valid timeframe. Only the host side can specify the validity of the request, and it uses the `iat` field to check the validity. This requires both the host and client to ensure their system clock is set correctly without too much of a skew. `iat` is used to check for validity as it is the most viable field to ensure both client and host has a proper system clock. Using expiry (`exp`) allows the requester to set the validity of the request which could be set too far into the future, which breaks the purpose of using a short-lived token.
 
 ```golang
-keyInput, err := simpleauthn.NewKey(simpleauthn.AlgHS256, "super-secret-key") // create a key using symetric keys (shared secret)
+keyInput, err := simpleauthn.NewKey(simpleauthn.HS256, "super-secret-key") // create a key using symetric keys (shared secret)
 if nil != err {
     log.Println(err)
     os.Exit(1)
@@ -88,7 +101,7 @@ The public and private keys must be passed to the function in JWK string format,
 ## Creating JWS signature using ECDSA private key
 
 ```golang
-keyPrivate, err := simpleauthn.NewKey(simpleauthn.AlgES256, privateKeyJWKString)
+keyPrivate, err := simpleauthn.NewKey(simpleauthn.ED25519, privateKeyJWKString)
 if nil != err {
     log.Println(err)
     os.Exit(1)
@@ -107,7 +120,7 @@ fmt.Println(requestStr)
 ## Verifying JWS signature using ECDSA public key
 
 ```golang
-keyPublic, err := simpleauthn.NewKey(simpleauthn.AlgES256, publicKeyJWKString)
+keyPublic, err := simpleauthn.NewKey(simpleauthn.ED25519, publicKeyJWKString)
 if nil != err {
     log.Println(err)
     os.Exit(1)
