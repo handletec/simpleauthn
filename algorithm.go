@@ -3,7 +3,8 @@ package simpleauthn
 import (
 	"fmt"
 
-	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/svicknesh/enum2str"
 	"github.com/svicknesh/key/v2"
 	"github.com/svicknesh/key/v2/shared"
 )
@@ -26,7 +27,7 @@ func (ta Algorithm) Alg() (alg jwa.KeyAlgorithm, err error) {
 
 	switch ta {
 	case ED25519:
-		alg = jwa.EdDSA()
+		alg = jwa.EdDSA() // EdDSAEd25519() emits "Ed25519" which is not the IANA JOSE identifier; stay on "EdDSA" (RFC 8037) until RFC 9864 is widespread
 	case ES256:
 		alg = jwa.ES256()
 	case ES384:
@@ -47,13 +48,7 @@ func (ta Algorithm) Alg() (alg jwa.KeyAlgorithm, err error) {
 }
 
 func (ta Algorithm) String() (str string) {
-	taStr := []string{"unknown", "ED25519", "ES256", "ES384", "ES512", "HS256", "HS384", "HS512"}
-	taInt := int(ta)
-	if taInt > len(taStr) {
-		taInt = int(Unknown)
-	}
-
-	return taStr[taInt]
+	return enum2str.String(ta, "unknown", "ED25519", "ES256", "ES384", "ES512", "HS256", "HS384", "HS512")
 }
 
 // AlgForKey - returns recommended algorithm for given key, useful when we don't know what key we are getting

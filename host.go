@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v3/jws"
+	"github.com/lestrrat-go/jwx/v4/jws"
 )
 
 // Host - host level authenticating requests

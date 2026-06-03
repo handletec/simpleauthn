@@ -3,8 +3,8 @@ package simpleauthn
 import (
 	"fmt"
 
-	"github.com/lestrrat-go/jwx/v3/jwa"
-	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 	"github.com/svicknesh/key/v2"
 	"golang.org/x/crypto/blake2b"
 )
@@ -57,7 +57,7 @@ func NewKey(alg Algorithm, inputKey string) (k *Key, err error) {
 		return nil, fmt.Errorf("newkey: unsupported algorithm given")
 	}
 
-	k.k, err = jwk.Import(input)
+	k.k, err = jwk.Import[jwk.Key](input)
 	if nil != err {
 		return nil, fmt.Errorf("newkey: %w", err)
 	}
