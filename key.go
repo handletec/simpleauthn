@@ -74,5 +74,5 @@ func (k *Key) IsPrivate() (ok bool) {
 
 // IsPublic - returns true if the key is public
 func (k *Key) IsPublic() (ok bool) {
-	return k.isPrivate
+	return k.isPublic
 }

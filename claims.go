@@ -40,7 +40,11 @@ func NewRequest(k *Key, payload any) (token string, err error) {
 		return "", fmt.Errorf("newrequest: expected private key for creating signature, none found")
 	}
 
-	bytes, _ := json.Marshal(payload)
+	bytes, err := json.Marshal(payload)
+	if nil != err {
+		return "", fmt.Errorf("newrequest: marshal -> %w", err)
+	}
+
 	signBytes, err := jws.Sign(bytes, jws.WithKey(k.alg, k.k))
 	if nil != err {
 		return "", fmt.Errorf("newrequest: sign -> %w", err)

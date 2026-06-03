@@ -1,10 +1,8 @@
 package simpleauthn
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v3/jws"
@@ -27,6 +25,10 @@ func NewHost(k *Key, validity int64) (host *Host, err error) {
 	// we need the public key to verify the signature
 	if !k.isPublic {
 		return nil, fmt.Errorf("newhost: expected public key for verifying signature, none found")
+	}
+
+	if validity <= 0 {
+		return nil, fmt.Errorf("newhost: validity must be a positive number of seconds")
 	}
 
 	host = new(Host)
@@ -70,8 +72,6 @@ func (host *Host) Verify(requestStr string, output any) (err error) {
 
 	// other optional fields such as issuer and payload will be dealt with the caller as they see fit
 
-	// we split the JWS into its constituent parts and return the base64 decoded middle part, split[1]
-	split := strings.Split(requestStr, ".")
-	payloadBytes, _ := base64.RawURLEncoding.DecodeString(split[1])
-	return json.Unmarshal(payloadBytes, output)
+	// use the verified bytes returned by jws.Verify directly rather than re-parsing the raw token
+	return json.Unmarshal(bytes, output)
 }
