@@ -345,13 +345,13 @@ func roundTripAsymmetric(t *testing.T, alg simpleauthn.Algorithm, keyType shared
 
 // ── Round-trip tests ──────────────────────────────────────────────────────────
 
-func TestRoundTripHS256(t *testing.T)  { roundTripSymmetric(t, simpleauthn.HS256) }
-func TestRoundTripHS384(t *testing.T)  { roundTripSymmetric(t, simpleauthn.HS384) }
-func TestRoundTripHS512(t *testing.T)  { roundTripSymmetric(t, simpleauthn.HS512) }
+func TestRoundTripHS256(t *testing.T)   { roundTripSymmetric(t, simpleauthn.HS256) }
+func TestRoundTripHS384(t *testing.T)   { roundTripSymmetric(t, simpleauthn.HS384) }
+func TestRoundTripHS512(t *testing.T)   { roundTripSymmetric(t, simpleauthn.HS512) }
 func TestRoundTripED25519(t *testing.T) { roundTripAsymmetric(t, simpleauthn.ED25519, key.ED25519) }
-func TestRoundTripES256(t *testing.T)  { roundTripAsymmetric(t, simpleauthn.ES256, key.ECDSA256) }
-func TestRoundTripES384(t *testing.T)  { roundTripAsymmetric(t, simpleauthn.ES384, key.ECDSA384) }
-func TestRoundTripES512(t *testing.T)  { roundTripAsymmetric(t, simpleauthn.ES512, key.ECDSA521) }
+func TestRoundTripES256(t *testing.T)   { roundTripAsymmetric(t, simpleauthn.ES256, key.ECDSA256) }
+func TestRoundTripES384(t *testing.T)   { roundTripAsymmetric(t, simpleauthn.ES384, key.ECDSA384) }
+func TestRoundTripES512(t *testing.T)   { roundTripAsymmetric(t, simpleauthn.ES512, key.ECDSA521) }
 
 // ── Verify error cases ────────────────────────────────────────────────────────
 
@@ -493,5 +493,73 @@ func TestVerifyPayloadRoundTrip(t *testing.T) {
 	}
 	if result.Role != payload.Role {
 		t.Errorf("Role: got %q, want %q", result.Role, payload.Role)
+	}
+}
+
+// ── Malformed-input rejection ─────────────────────────────────────────────────
+
+func TestVerifyRejectsMalformedToken(t *testing.T) {
+	k, err := simpleauthn.NewKey(simpleauthn.HS256, "malformed-token-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	host, err := simpleauthn.NewHost(k, 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	malformed := []string{
+		"",
+		"not.a.token",
+		"garbage",
+		"eyJhbGciOiJIUzI1NiJ9",         // only a header segment
+		"eyJhbGciOiJub25lIn0.payload.", // alg:none — must be rejected
+	}
+	for _, m := range malformed {
+		m := m
+		t.Run(fmt.Sprintf("%q", m), func(t *testing.T) {
+			if err = host.Verify(m, new(testPayload)); err == nil {
+				t.Errorf("Verify(%q): expected error for malformed token", m)
+			}
+		})
+	}
+}
+
+func TestVerifyRejectsPlainJSONAsToken(t *testing.T) {
+	// A plain JSON blob is not a JWS compact serialisation (unsigned).
+	k, err := simpleauthn.NewKey(simpleauthn.HS256, "plain-json-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	host, err := simpleauthn.NewHost(k, 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := `{"iat":1700000000,"role":"admin"}`
+	if err = host.Verify(plain, new(testPayload)); err == nil {
+		t.Error("expected error: plain JSON must not be accepted as a signed token")
+	}
+}
+
+func TestNewKeyRejectsMalformedJWK(t *testing.T) {
+	// Non-empty but structurally invalid JWK JSON — must not panic or succeed.
+	// Uses ED25519 because the input is parsed as an asymmetric key; symmetric
+	// algorithms hash any non-empty string and always succeed.
+	bad := []string{
+		`{"kty":"EC"}`,      // missing required curve / key material
+		`{"kty":"unknown"}`, // unrecognised key type
+		`not json at all`,   // not JSON
+		`{}`,                // empty object
+	}
+	for _, b := range bad {
+		b := b
+		preview := b
+		if len(preview) > 20 {
+			preview = preview[:20]
+		}
+		t.Run(fmt.Sprintf("%q", preview), func(t *testing.T) {
+			if _, err := simpleauthn.NewKey(simpleauthn.ED25519, b); err == nil {
+				t.Errorf("NewKey(ED25519, %q): expected error for malformed JWK", b)
+			}
+		})
 	}
 }
