@@ -151,6 +151,14 @@ func TestNewKeyRejectsUnknownAlgorithm(t *testing.T) {
 	}
 }
 
+func TestNewKeyRejectsShortSymmetricInput(t *testing.T) {
+	for _, s := range []string{"", "short", "fifteen-bytes!!"[:15]} {
+		if _, err := simpleauthn.NewKey(simpleauthn.HS256, s); err == nil {
+			t.Errorf("NewKey(HS256, %q): expected error for input shorter than 16 bytes", s)
+		}
+	}
+}
+
 // ── Key.IsPrivate / Key.IsPublic ──────────────────────────────────────────────
 
 func TestSymmetricKeyIsPrivateAndPublic(t *testing.T) {
@@ -227,7 +235,7 @@ func TestNewHostRejectsPrivateOnlyKey(t *testing.T) {
 }
 
 func TestNewHostRejectsZeroValidity(t *testing.T) {
-	k, err := simpleauthn.NewKey(simpleauthn.HS256, "secret")
+	k, err := simpleauthn.NewKey(simpleauthn.HS256, "test-validity-zero-secret")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +245,7 @@ func TestNewHostRejectsZeroValidity(t *testing.T) {
 }
 
 func TestNewHostRejectsNegativeValidity(t *testing.T) {
-	k, err := simpleauthn.NewKey(simpleauthn.HS256, "secret")
+	k, err := simpleauthn.NewKey(simpleauthn.HS256, "test-validity-negative-secret")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,11 +386,11 @@ func TestVerifyRejectsTamperedToken(t *testing.T) {
 }
 
 func TestVerifyRejectsWrongKey(t *testing.T) {
-	k1, err := simpleauthn.NewKey(simpleauthn.HS256, "key-one")
+	k1, err := simpleauthn.NewKey(simpleauthn.HS256, "test-wrong-key-one-secret")
 	if err != nil {
 		t.Fatal(err)
 	}
-	k2, err := simpleauthn.NewKey(simpleauthn.HS256, "key-two")
+	k2, err := simpleauthn.NewKey(simpleauthn.HS256, "test-wrong-key-two-secret")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,6 +451,52 @@ func TestVerifyRejectsMissingIssuedAt(t *testing.T) {
 	}
 	if err = host.Verify(token, new(testPayload)); err == nil {
 		t.Error("expected error: zero iat must be rejected")
+	}
+}
+
+func TestVerifyRejectsFutureDatedIat(t *testing.T) {
+	k, err := simpleauthn.NewKey(simpleauthn.HS256, "future-iat-secret-key-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	host, err := simpleauthn.NewHost(k, 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	future := &testPayload{
+		Claim: &simpleauthn.Claim{IssuedAt: time.Now().UTC().Unix() + 100},
+	}
+	token, err := simpleauthn.NewRequest(k, future)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = host.Verify(token, new(testPayload)); err == nil {
+		t.Error("expected error: token with future iat must be rejected")
+	}
+}
+
+func TestVerifyRejectsExpiredToken(t *testing.T) {
+	k, err := simpleauthn.NewKey(simpleauthn.HS256, "expired-token-secret-key-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	host, err := simpleauthn.NewHost(k, 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Unix()
+	expired := &testPayload{
+		Claim: &simpleauthn.Claim{
+			IssuedAt: now,
+			Expiry:   now - 10, // already past its expiry
+		},
+	}
+	token, err := simpleauthn.NewRequest(k, expired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = host.Verify(token, new(testPayload)); err == nil {
+		t.Error("expected error: token with past exp must be rejected")
 	}
 }
 

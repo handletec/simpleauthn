@@ -47,11 +47,14 @@ func NewKey(alg Algorithm, inputKey string) (k *Key, err error) {
 		}
 
 	case HS256, HS384, HS512:
-		// shared symetric key
-		h := blake2b.Sum256(inputBytes) // we convert the input key to a hash value, allows us to use phrases as well
+		// shared symmetric key — input must be at least 16 bytes to avoid trivially brute-forceable keys
+		if len(inputBytes) < 16 {
+			return nil, fmt.Errorf("newkey: symmetric key input must be at least 16 bytes")
+		}
+		h := blake2b.Sum256(inputBytes) // convert input to a fixed-size key; allows passphrases as input
 		input = h[:]
-		k.isPrivate = true // for symetric keys, it is the same key for signing and verifying
-		k.isPublic = true  // for symetric keys, it is the same key for signing and verifying
+		k.isPrivate = true // for symmetric keys, the same key signs and verifies
+		k.isPublic = true  // for symmetric keys, the same key signs and verifies
 
 	default:
 		return nil, fmt.Errorf("newkey: unsupported algorithm given")

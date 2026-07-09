@@ -12,7 +12,6 @@ import (
 type Host struct {
 	key      *Key
 	validity int64
-	//alg      jwa.KeyAlgorithm
 }
 
 // NewHost - create new instance for host to perform authentication requests
@@ -68,6 +67,13 @@ func (host *Host) Verify(requestStr string, output any) (err error) {
 	// if the not before value is set, the value must not exceed current time
 	if claim.NotBefore != 0 && claim.NotBefore > nowUnix {
 		return fmt.Errorf("verify: authorization request (nbf) is in the future")
+	}
+
+	// if the expiry value is set by the requester, honour it as an additional upper bound;
+	// the primary lifespan control is the iat-based validity window enforced above —
+	// do not rely solely on exp because requesters holding the key could set it arbitrarily far ahead
+	if claim.Expiry != 0 && nowUnix > claim.Expiry {
+		return fmt.Errorf("verify: authorization has expired")
 	}
 
 	// other optional fields such as issuer and payload will be dealt with the caller as they see fit

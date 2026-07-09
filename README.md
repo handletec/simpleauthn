@@ -35,8 +35,9 @@ token := new(Token)
 token.Claim = simpleauthn.NewClaim(time.Duration(time.Second * 120)) // fill claims with default values, setting the expiry to be 2 minutes from now
 token.Issuer = "superduperman-hs256"
 
-// use a symetric key for signing
-keyInput, err := simpleauthn.NewKey(simpleauthn.AlgHS256, "super-secret-key") // create a key using symetric keys (shared secret)
+// use a symmetric key for signing — input must be at least 16 bytes; the library hashes it
+// with BLAKE2b-256 so passphrases of any length (≥16 bytes) are accepted as key material
+keyInput, err := simpleauthn.NewKey(simpleauthn.HS256, "super-secret-key") // create a key using symmetric keys (shared secret)
 if nil != err {
     log.Println(err)
     os.Exit(1)
@@ -63,7 +64,17 @@ The JSON structure for the fields in the request are
 
 # Verifying JWS signature
 
-This is done by the host side to verify the signature and making sure the request is within the valid timeframe. Only the host side can specify the validity of the request, and it uses the `iat` field to check the validity. This requires both the host and client to ensure their system clock is set correctly without too much of a skew. `iat` is used to check for validity as it is the most viable field to ensure both client and host has a proper system clock. Using expiry (`exp`) allows the requester to set the validity of the request which could be set too far into the future, which breaks the purpose of using a short-lived token.
+This is done by the host side to verify the signature and making sure the request is within the valid timeframe.
+
+## Lifespan control design
+
+The host controls the token lifespan via the `validity` parameter (in seconds) passed to `NewHost`. Verification checks that the `iat` (issued-at) field falls within `[now - validity, now]`. This is the **primary and mandatory** security control.
+
+`exp` (expiry) is intentionally **not** used as the primary lifespan control. Requesters hold the signing key (private key or shared secret), so they could set `exp` arbitrarily far into the future and bypass a short-lived-token policy. The host's `validity` window cannot be overridden by the requester.
+
+`exp` is treated as an **optional additional constraint**: if the requester sets it, the host enforces it as an early-expiry upper bound on top of the `iat` window. If `exp` is absent, only the `iat` window applies. This lets requesters opt into shorter lifetimes but prevents them from extending beyond what the host permits.
+
+Both host and requester must have their system clocks synchronised; clock skew beyond the validity window will cause spurious verification failures.
 
 ```golang
 keyInput, err := simpleauthn.NewKey(simpleauthn.HS256, "super-secret-key") // create a key using symetric keys (shared secret)
